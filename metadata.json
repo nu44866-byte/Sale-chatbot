@@ -1,0 +1,6 @@
+{
+  "name": "Sitewise AI - Website Chatbot Builder",
+  "description": "Turn any website into an AI-powered customer support and lead generation chatbot in minutes with automated crawling, embeddings indexing, custom styling, and embed widgets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
