@@ -1,4 +1,4 @@
-export type TabType = 'dashboard' | 'websites' | 'chatbot-settings' | 'install-widget' | 'analytics';
+export type TabType = 'builder' | 'preview' | 'install' | 'dashboard' | 'install-widget' | 'websites' | 'chatbot-settings' | 'analytics';
 
 export type AppRole = 'client' | 'admin';
 

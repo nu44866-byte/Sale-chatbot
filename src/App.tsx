@@ -21,10 +21,11 @@ import {
 } from './data/mockData.ts';
 import { Sidebar } from './components/Sidebar.tsx';
 import { Header } from './components/Header.tsx';
-import { DashboardView } from './components/DashboardView.tsx';
+import { BotBuilderView } from './components/BotBuilderView.tsx';
+import { WebsitePreviewPage } from './components/WebsitePreviewPage.tsx';
+import { BuyAndInstallPage } from './components/BuyAndInstallPage.tsx';
 import { WebsitesView } from './components/WebsitesView.tsx';
 import { SettingsView } from './components/SettingsView.tsx';
-import { InstallWidgetView } from './components/InstallWidgetView.tsx';
 import { AnalyticsView } from './components/AnalyticsView.tsx';
 import { WebsiteLiveModal } from './components/WebsiteLiveModal.tsx';
 import { PaymentModal } from './components/PaymentModal.tsx';
@@ -85,9 +86,14 @@ export default function App() {
 
   React.useEffect(() => {
     const handleLocationChange = () => {
+      const isAuthed = sessionStorage.getItem('sitewise_admin_auth') === 'true';
       const params = new URLSearchParams(window.location.search);
       if (params.get('admin') === 'true' || window.location.hash === '#admin') {
-        setRoleState('admin');
+        if (isAuthed) {
+          setRoleState('admin');
+        } else {
+          setIsAdminAuthModalOpen(true);
+        }
       } else {
         setRoleState('client');
       }
@@ -101,7 +107,8 @@ export default function App() {
     };
   }, []);
 
-  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  // Primary 3 Pages: 'builder' | 'preview' | 'install'
+  const [activeTab, setActiveTab] = useState<TabType>('builder');
   const [config, setConfig] = useState<ChatbotConfig>(initialChatbotConfig);
   const [websites, setWebsites] = useState<CrawledWebsite[]>(initialWebsites);
   const [metrics, setMetrics] = useState<AnalyticsMetric>(initialAnalytics);
@@ -112,13 +119,13 @@ export default function App() {
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>(initialPromoCodes);
   const [paymentGateways, setPaymentGateways] = useState<PaymentGatewayConfig>(initialPaymentGateways);
 
-  // Bot Commercial License State (Selling the bot)
+  // Bot Commercial License State
   const [license, setLicense] = useState<BotLicense>({
     isPurchased: false,
     licenseKey: '',
     plan: 'pro',
-    buyerName: 'Demo Client',
-    buyerEmail: 'client@example.com',
+    buyerName: 'Ahmed Khan',
+    buyerEmail: 'ahmed@example.com',
     targetDomain: 'https://www.example.com',
     amountPaid: 0,
     purchaseDate: '',
@@ -150,7 +157,7 @@ export default function App() {
     );
   };
 
-  // Quick toggle between demo paid and unpaid state for client testing
+  // Quick toggle between demo paid and unpaid state
   const handleToggleLicenseTest = () => {
     if (license.isPurchased) {
       setLicense({
@@ -173,11 +180,10 @@ export default function App() {
     }
   };
 
-  // When client completes payment in the modal, sync with client license and admin sales records!
+  // When client completes payment, sync license and record admin sale
   const handlePaymentSuccess = (newLicense: BotLicense) => {
     setLicense(newLicense);
 
-    // Auto record in Admin Sales
     const newSaleRecord: AdminSaleRecord = {
       id: `sale-${Date.now()}`,
       clientName: newLicense.buyerName,
@@ -195,7 +201,7 @@ export default function App() {
     setSalesRecords([newSaleRecord, ...salesRecords]);
   };
 
-  // Admin Actions
+  // Admin Handlers
   const handleAddManualSale = (sale: AdminSaleRecord) => {
     setSalesRecords([sale, ...salesRecords]);
   };
@@ -224,7 +230,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex flex-col md:flex-row antialiased">
-      {/* Left Sidebar Navigation with Admin Console Link */}
+      {/* Left Sidebar Navigation */}
       <Sidebar
         activeTab={activeTab}
         role={role}
@@ -256,20 +262,39 @@ export default function App() {
               onLockSession={handleLockAdminSession}
             />
           ) : (
-            /* CLIENT CHATBOT BUILDER */
+            /* CLIENT PORTAL: 3 MAIN CORE PAGES & MANAGEMENT TOOLS */
             <>
-              {activeTab === 'dashboard' && (
-                <DashboardView
+              {/* PAGE 1: BOT STUDIO & CUSTOMIZER */}
+              {activeTab === 'builder' && (
+                <BotBuilderView
                   config={config}
-                  license={license}
                   onUpdateConfig={setConfig}
                   onNavigateTab={setActiveTab}
+                />
+              )}
+
+              {/* PAGE 2: WEBSITE LIVE PREVIEW & SIMULATOR */}
+              {activeTab === 'preview' && (
+                <WebsitePreviewPage
+                  config={config}
+                  url={websites[0]?.url || 'https://www.example.com'}
+                  onNavigateTab={setActiveTab}
                   onOpenLiveModal={() => setIsLiveModalOpen(true)}
-                  onOpenPaymentModal={() => setIsPaymentModalOpen(true)}
+                />
+              )}
+
+              {/* PAGE 3: BUY LICENSE & INSTALL WIDGET */}
+              {activeTab === 'install' && (
+                <BuyAndInstallPage
+                  config={config}
+                  license={license}
+                  onNavigateTab={setActiveTab}
+                  onPaymentSuccess={handlePaymentSuccess}
                   onToggleLicenseTest={handleToggleLicenseTest}
                 />
               )}
 
+              {/* SECONDARY MANAGEMENT TOOLS */}
               {activeTab === 'websites' && (
                 <WebsitesView
                   websites={websites}
@@ -283,14 +308,6 @@ export default function App() {
                 <SettingsView config={config} onUpdateConfig={setConfig} />
               )}
 
-              {activeTab === 'install-widget' && (
-                <InstallWidgetView
-                  config={config}
-                  license={license}
-                  onOpenPaymentModal={() => setIsPaymentModalOpen(true)}
-                />
-              )}
-
               {activeTab === 'analytics' && (
                 <AnalyticsView
                   metrics={metrics}
@@ -302,7 +319,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* Interactive Full Live Browser Modal */}
+      {/* Interactive Fullscreen Live Browser Modal */}
       <WebsiteLiveModal
         isOpen={isLiveModalOpen}
         onClose={() => setIsLiveModalOpen(false)}
@@ -327,4 +344,3 @@ export default function App() {
     </div>
   );
 }
-
