@@ -29,12 +29,16 @@ import { AnalyticsView } from './components/AnalyticsView.tsx';
 import { WebsiteLiveModal } from './components/WebsiteLiveModal.tsx';
 import { PaymentModal } from './components/PaymentModal.tsx';
 import { AdminDashboardView } from './components/AdminDashboardView.tsx';
+import { AdminLoginModal } from './components/AdminLoginModal.tsx';
 
 export default function App() {
+  const [isAdminAuthModalOpen, setIsAdminAuthModalOpen] = useState(false);
+
   const getInitialRole = (): AppRole => {
     if (typeof window !== 'undefined') {
+      const isAuthed = sessionStorage.getItem('sitewise_admin_auth') === 'true';
       const params = new URLSearchParams(window.location.search);
-      if (params.get('admin') === 'true' || window.location.hash === '#admin' || window.location.pathname.includes('/admin')) {
+      if ((params.get('admin') === 'true' || window.location.hash === '#admin') && isAuthed) {
         return 'admin';
       }
     }
@@ -43,7 +47,15 @@ export default function App() {
 
   const [role, setRoleState] = useState<AppRole>(getInitialRole);
 
-  const setRole = (newRole: AppRole) => {
+  const handleSetRole = (newRole: AppRole) => {
+    if (newRole === 'admin') {
+      const isAuthed = sessionStorage.getItem('sitewise_admin_auth') === 'true';
+      if (!isAuthed) {
+        setIsAdminAuthModalOpen(true);
+        return;
+      }
+    }
+
     setRoleState(newRole);
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
@@ -54,6 +66,21 @@ export default function App() {
       }
       window.history.pushState({}, '', url.toString());
     }
+  };
+
+  const handleAdminAuthSuccess = () => {
+    setIsAdminAuthModalOpen(false);
+    setRoleState('admin');
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('admin', 'true');
+      window.history.pushState({}, '', url.toString());
+    }
+  };
+
+  const handleLockAdminSession = () => {
+    sessionStorage.removeItem('sitewise_admin_auth');
+    handleSetRole('client');
   };
 
   React.useEffect(() => {
@@ -202,14 +229,14 @@ export default function App() {
         activeTab={activeTab}
         role={role}
         onSelectTab={setActiveTab}
-        onToggleRole={setRole}
+        onToggleRole={handleSetRole}
       />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         <Header
           role={role}
-          onToggleRole={setRole}
+          onToggleRole={handleSetRole}
           onOpenLivePreview={() => setIsLiveModalOpen(true)}
         />
 
@@ -225,7 +252,8 @@ export default function App() {
               onAddPromoCode={handleAddPromoCode}
               onTogglePromoCode={handleTogglePromoCode}
               onUpdateGateways={setPaymentGateways}
-              onBackToClientView={() => setRole('client')}
+              onBackToClientView={() => handleSetRole('client')}
+              onLockSession={handleLockAdminSession}
             />
           ) : (
             /* CLIENT CHATBOT BUILDER */
@@ -289,6 +317,14 @@ export default function App() {
         onSuccess={handlePaymentSuccess}
         initialDomain={websites[0]?.url || 'https://www.example.com'}
       />
+
+      {/* Master Admin PIN Security Authentication Modal */}
+      <AdminLoginModal
+        isOpen={isAdminAuthModalOpen}
+        onClose={() => setIsAdminAuthModalOpen(false)}
+        onSuccess={handleAdminAuthSuccess}
+      />
     </div>
   );
 }
+
